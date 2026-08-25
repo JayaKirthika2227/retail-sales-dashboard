@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retail Velocity & Assortment Analytics Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-mode">
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand-badge">
+          <span class="pulse-dot"></span>
+          <span>RETAIL INTELLIGENCE</span>
+        </div>
+        <h1>Velocity & Assortment Command Center</h1>
+        <p class="subtitle">Single Source of Truth Performance Engine (6-Month Sales & Velocity Snapshot)</p>
+      </div>
+      <div class="header-actions">
+        <div class="dataset-meta">
+          <span class="meta-item"><strong>Source:</strong> Product Sales Analysis.xlsx</span>
+          <span class="meta-item" id="total-rows-badge"><strong>Records:</strong> 8,843 SKUs</span>
+        </div>
+        <button class="btn btn-outline" id="theme-toggle">☀️ Light Mode</button>
+        <button class="btn btn-primary" id="reset-filters-btn">↺ Reset Filters</button>
+      </div>
+    </header>
+
+    <!-- Filters Section -->
+    <section class="filters-card glass-panel">
+      <div class="filters-header">
+        <h3><span class="icon">⚡</span> Dynamic Multi-Dimension Filters</h3>
+        <span class="filter-count" id="active-filter-count">All Dimensions Active</span>
+      </div>
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label for="filter-location">Store Location</label>
+          <select id="filter-location" class="form-control">
+            <option value="ALL">All Locations (A, B, C)</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-parent-category">Parent Category</label>
+          <select id="filter-parent-category" class="form-control">
+            <option value="ALL">All Parent Categories</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-vendor">Vendor</label>
+          <select id="filter-vendor" class="form-control">
+            <option value="ALL">All Vendors (162)</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-tier">Velocity Tier</label>
+          <select id="filter-tier" class="form-control">
+            <option value="ALL">All Tiers (Fast, Medium, Slow, Dead)</option>
+            <option value="Fast Mover">🚀 Fast Mover (Top 25%)</option>
+            <option value="Medium Mover">⚡ Medium Mover (25% - 75%)</option>
+            <option value="Slow Mover">⏳ Slow Mover (10% - 30%)</option>
+            <option value="Dead Stock">🛑 Dead Stock (Bottom 10% / Qty ≤ 0)</option>
+          </select>
+        </div>
+        <div class="filter-group search-group">
+          <label for="search-item">Search SKU / Item</label>
+          <div class="search-input-wrapper">
+            <input type="text" id="search-item" class="form-control" placeholder="Search item name (e.g. Series-A)...">
+            <span class="search-icon">🔍</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Executive KPI Metric Cards -->
+    <section class="kpi-grid">
+      <div class="kpi-card glass-panel" id="kpi-revenue">
+        <div class="kpi-icon icon-blue">💰</div>
+        <div class="kpi-content">
+          <span class="kpi-label">Filtered Net Sales</span>
+          <h2 class="kpi-value" id="val-net-sales">$7,712,364.96</h2>
+          <span class="kpi-sub" id="val-sales-share">100.0% of Catalog Sales</span>
+        </div>
+      </div>
+
+      <div class="kpi-card glass-panel" id="kpi-margin">
+        <div class="kpi-icon icon-purple">📈</div>
+        <div class="kpi-content">
+          <span class="kpi-label">Total Gross Margin</span>
+          <h2 class="kpi-value" id="val-margin-dollars">$3,570,633.28</h2>
+          <span class="kpi-sub" id="val-margin-pct">46.30% Margin Rate</span>
+        </div>
+      </div>
+
+      <div class="kpi-card glass-panel" id="kpi-quantity">
+        <div class="kpi-icon icon-green">📦</div>
+        <div class="kpi-content">
+          <span class="kpi-label">Total Units Sold</span>
+          <h2 class="kpi-value" id="val-qty-sold">268,741</h2>
+          <span class="kpi-sub" id="val-sku-count">8,843 Product Rows</span>
+        </div>
+      </div>
+
+      <div class="kpi-card glass-panel alert-card" id="kpi-deadstock">
+        <div class="kpi-icon icon-red">🛑</div>
+        <div class="kpi-content">
+          <span class="kpi-label">Dead Stock at Risk</span>
+          <h2 class="kpi-value" id="val-dead-count">1,230 SKUs</h2>
+          <span class="kpi-sub" id="val-dead-cogs">$40,413.52 Trapped COGS</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visual Analytics Section -->
+    <section class="charts-grid">
+      <div class="chart-card glass-panel">
+        <div class="chart-header">
+          <h3>📊 Velocity Tier Distribution</h3>
+          <span class="badge">SKU Count vs Revenue ($)</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="velocityTierChart"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card glass-panel">
+        <div class="chart-header">
+          <h3>🛑 Dead Stock Exposure by Parent Category</h3>
+          <span class="badge badge-danger">Trapped COGS ($)</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="deadStockCategoryChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live Performance Highlights: Top & Bottom Movers -->
+    <section class="movers-grid">
+      <div class="movers-card glass-panel">
+        <div class="card-title">
+          <h4>🚀 Top 5 Fast Movers (Revenue Leaders)</h4>
+        </div>
+        <div class="movers-list" id="top-movers-list"></div>
+      </div>
+
+      <div class="movers-card glass-panel">
+        <div class="card-title">
+          <h4>🛑 Top 5 Dead Stock Trapped Capital</h4>
+        </div>
+        <div class="movers-list" id="bottom-movers-list"></div>
+      </div>
+    </section>
+
+    <!-- Interactive Data Table -->
+    <section class="table-section glass-panel">
+      <div class="table-header-bar">
+        <div class="table-title">
+          <h3>📋 Granular Velocity & Assortment Table</h3>
+          <span class="row-count-tag" id="table-row-count">Showing 8,843 records</span>
+        </div>
+        <div class="table-actions">
+          <button class="btn btn-sm btn-outline" id="export-csv-btn">📥 Export Filtered CSV</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table" id="velocity-table">
+          <thead>
+            <tr>
+              <th data-sort="item_name">Item Name <span class="sort-indicator">↕</span></th>
+              <th data-sort="location">Loc <span class="sort-indicator">↕</span></th>
+              <th data-sort="parent_category">Parent Category <span class="sort-indicator">↕</span></th>
+              <th data-sort="vendor">Vendor <span class="sort-indicator">↕</span></th>
+              <th data-sort="quantity_sold" class="text-right">Qty Sold <span class="sort-indicator">↕</span></th>
+              <th data-sort="net_sales" class="text-right">Net Sales <span class="sort-indicator">↕</span></th>
+              <th data-sort="total_cogs" class="text-right">COGS <span class="sort-indicator">↕</span></th>
+              <th data-sort="margin_pct" class="text-right">Margin % <span class="sort-indicator">↕</span></th>
+              <th data-sort="percentile" class="text-right">Category Rank <span class="sort-indicator">↕</span></th>
+              <th data-sort="tier" class="text-center">Velocity Tier <span class="sort-indicator">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- Data rows injected dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-bar">
+        <div class="page-info" id="pagination-info">Page 1 of 177</div>
+        <div class="page-controls">
+          <button class="btn btn-sm" id="btn-first">« First</button>
+          <button class="btn btn-sm" id="btn-prev">‹ Prev</button>
+          <span class="current-page-num" id="current-page-badge">1</span>
+          <button class="btn btn-sm" id="btn-next">Next ›</button>
+          <button class="btn btn-sm" id="btn-last">Last »</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer Notes -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <p><strong>Retail Analytics Deliverable</strong> • Single Source of Truth Engine • Data extracted from <code>Product Sales Analysis.xlsx</code></p>
+        <p class="limitations-note">⚠️ Note: Fixed 6-month snapshot without transaction timestamps or on-hand inventory levels. Replenishment recommendations subject to live inventory verification.</p>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
